@@ -25,7 +25,7 @@ def load_instance(filepath):
 
     return num_jobs, num_machines, jobs
 
-num_jobs, num_machines, jobs = load_instance("Assignment 1/la01.txt")
+num_jobs, num_machines, jobs = load_instance("./data/la01.txt")
 
 # print("Jobs:", num_jobs)
 # print("Machines:", num_machines)
@@ -159,56 +159,46 @@ def tournament_selection(
 
 def crossover(parent1, parent2, num_jobs, num_machines):
     '''
-    Perform crossover while preserving the number of operations for each job.
+    Precedence Preserving / Job-based Crossover (POX/JOX)
+    Selects a random subset of jobs, preserves their exact positions from parent1,
+    and fills the remaining slots from parent2 in their original relative order.
     '''
-
     list_len = len(parent1)
-
     child1 = [None] * list_len
     child2 = [None] * list_len
 
-    target_indices = random.sample(range(list_len), list_len // 2)
+    # Select roughly half of the jobs to preserve
+    selected_jobs = set(random.sample(range(num_jobs), num_jobs // 2))
 
-    for index in target_indices:
-        child1[index] = parent1[index]
-    indices_child2 = [i for i, val in enumerate(child1) if val is None]
-    for index in indices_child2:
-        child2[index] = parent2[index]
+    # Child 1: preserve selected jobs from parent1
+    remaining_for_child1 = []
+    for job in parent2:
+        if job not in selected_jobs:
+            remaining_for_child1.append(job)
 
-    counts_child1 = [0] * num_jobs
-    for job in child1:
-        if job is not None:
-            counts_child1[job] += 1
+    # Child 2: preserve selected jobs from parent2
+    remaining_for_child2 = []
+    for job in parent1:
+        if job not in selected_jobs:
+            remaining_for_child2.append(job)
 
-    p2_index = 0
+    for i in range(list_len):
+        if parent1[i] in selected_jobs:
+            child1[i] = parent1[i]
+        if parent2[i] in selected_jobs:
+            child2[i] = parent2[i]
+
+    p2_idx = 0
+    p1_idx = 0
     for i in range(list_len):
         if child1[i] is None:
-            while p2_index < list_len:
-                candidate_job = parent2[p2_index]
-                p2_index += 1
-                if counts_child1[candidate_job] < num_machines:
-                    child1[i] = candidate_job
-                    counts_child1[candidate_job] += 1
-                    break
-
-    counts_child2 = [0] * num_jobs
-    for job in child2:
-        if job is not None:
-            counts_child2[job] += 1
-
-    p1_index = 0
-    for i in range(list_len):
+            child1[i] = remaining_for_child1[p2_idx]
+            p2_idx += 1
         if child2[i] is None:
-            while p1_index < list_len:
-                candidate_job = parent1[p1_index]
-                p1_index += 1
-                if counts_child2[candidate_job] < num_machines:
-                    child2[i] = candidate_job
-                    counts_child2[candidate_job] += 1
-                    break
+            child2[i] = remaining_for_child2[p1_idx]
+            p1_idx += 1
 
     return child1, child2
-
 def mutate(chromosome):
     '''
     Perform mutation on a chromosome by swapping two random genes.
@@ -371,9 +361,9 @@ if __name__ == "__main__":
         jobs,
         num_jobs,
         num_machines,
-        population_size=5,
-        generations=100,
-        mutation_rate=0.5,
+        population_size=100,
+        generations=2000,
+        mutation_rate=0.2,
         crossover_rate=0.8
     )
 
@@ -384,8 +374,8 @@ if __name__ == "__main__":
         num_jobs,
         num_machines
     )
-    print("\nSchedule:")
-    for operation in schedule:
-        print(operation)
+    # print("\nSchedule:")
+    # for operation in schedule:
+    #     print(operation)
     print("Makespan:", makespan)
 
