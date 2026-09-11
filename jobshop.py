@@ -25,7 +25,7 @@ def load_instance(filepath):
 
     return num_jobs, num_machines, jobs
 
-num_jobs, num_machines, jobs = load_instance("./data/la01.txt")
+num_jobs, num_machines, jobs = load_instance("./la01.txt")
 
 # print("Jobs:", num_jobs)
 # print("Machines:", num_machines)
@@ -130,7 +130,7 @@ def fitness(chromosome, jobs, num_jobs, num_machines):
         num_machines
     )
 
-    return makespan
+    return 1 / makespan
 
 def tournament_selection(
     population,
@@ -148,7 +148,7 @@ def tournament_selection(
         jobs,
         num_jobs,
         num_machines
-    ) <= fitness(
+    ) >= fitness(
         candidate2,
         jobs,
         num_jobs,
@@ -157,48 +157,35 @@ def tournament_selection(
         return candidate1
     return candidate2
 
-def crossover(parent1, parent2, num_jobs, num_machines):
-    '''
-    Precedence Preserving / Job-based Crossover (POX/JOX)
-    Selects a random subset of jobs, preserves their exact positions from parent1,
-    and fills the remaining slots from parent2 in their original relative order.
-    '''
-    list_len = len(parent1)
-    child1 = [None] * list_len
-    child2 = [None] * list_len
+def crossover(parent1, parent2):
+    size = len(parent1)
+    child1 = [None] * size
+    child2 = [None] * size
 
-    # Select roughly half of the jobs to preserve
-    selected_jobs = set(random.sample(range(num_jobs), num_jobs // 2))
+    gene1 = random.choice(parent1)
+    gene2 = random.choice(parent2)
 
-    # Child 1: preserve selected jobs from parent1
-    remaining_for_child1 = []
-    for job in parent2:
-        if job not in selected_jobs:
-            remaining_for_child1.append(job)
+    remaining_for_child1 = parent2.copy()
+    remaining_for_child2 = parent1.copy()
 
-    # Child 2: preserve selected jobs from parent2
-    remaining_for_child2 = []
-    for job in parent1:
-        if job not in selected_jobs:
-            remaining_for_child2.append(job)
+    for index in range(size):
+        if parent1[index] == gene1:
+            child1[index] = gene1
+            remaining_for_child1.remove(gene1)
 
-    for i in range(list_len):
-        if parent1[i] in selected_jobs:
-            child1[i] = parent1[i]
-        if parent2[i] in selected_jobs:
-            child2[i] = parent2[i]
+        if parent2[index] == gene2:
+            child2[index] = gene2
+            remaining_for_child2.remove(gene2)
 
-    p2_idx = 0
-    p1_idx = 0
-    for i in range(list_len):
-        if child1[i] is None:
-            child1[i] = remaining_for_child1[p2_idx]
-            p2_idx += 1
-        if child2[i] is None:
-            child2[i] = remaining_for_child2[p1_idx]
-            p1_idx += 1
+    for index in range(size):
+        if child1[index] is None:
+            child1[index] = remaining_for_child1.pop(0)
+
+        if child2[index] is None:
+            child2[index] = remaining_for_child2.pop(0)
 
     return child1, child2
+
 def mutate(chromosome):
     '''
     Perform mutation on a chromosome by swapping two random genes.
@@ -235,13 +222,12 @@ def genetic_algorithm(
     mutation_rate=0.1,
     crossover_rate=0.8
 ):
-    population = create_population(
-        population_size,
-        num_jobs,
-        num_machines
-    )
+    population = [
+        create_chromosome(num_jobs, num_machines)
+        for _ in range(population_size)
+    ]
 
-    best_chromosome = min(
+    best_chromosome = max(
         population,
         key=lambda chromosome: fitness(
             chromosome,
@@ -256,7 +242,7 @@ def genetic_algorithm(
         generations + 1
     ):
 
-        generation_best = min(
+        generation_best = max(
             population,
             key=lambda chromosome: fitness(
                 chromosome,
@@ -271,7 +257,7 @@ def genetic_algorithm(
             jobs,
             num_jobs,
             num_machines
-        ) < fitness(
+        ) > fitness(
             best_chromosome,
             jobs,
             num_jobs,
@@ -280,8 +266,8 @@ def genetic_algorithm(
             best_chromosome = generation_best.copy()
 
         print(
-            f"Generation {generation}: Best Fitness = {fitness(best_chromosome, jobs, num_jobs, num_machines)}"
-        )
+                    f"Generation {generation}: Best Fitness = {fitness(best_chromosome, jobs, num_jobs, num_machines)}"
+                )
 
         new_population = []
 
@@ -305,9 +291,7 @@ def genetic_algorithm(
             if crossover_probability < crossover_rate:
                 child1, child2 = crossover(
                     parent1,
-                    parent2,
-                    num_jobs,
-                    num_machines
+                    parent2
                 )
 
             else:
@@ -332,7 +316,7 @@ def genetic_algorithm(
 
         population = new_population
 
-    final_best = min(
+    final_best = max(
         population,
         key=lambda chromosome: fitness(
             chromosome,
@@ -346,7 +330,7 @@ def genetic_algorithm(
         jobs,
         num_jobs,
         num_machines
-    ) < fitness(
+    ) > fitness(
         best_chromosome,
         jobs,
         num_jobs,
@@ -363,7 +347,7 @@ if __name__ == "__main__":
         num_machines,
         population_size=100,
         generations=2000,
-        mutation_rate=0.2,
+        mutation_rate=0.1,
         crossover_rate=0.8
     )
 
@@ -374,8 +358,7 @@ if __name__ == "__main__":
         num_jobs,
         num_machines
     )
-    # print("\nSchedule:")
-    # for operation in schedule:
-    #     print(operation)
+    print("\nSchedule:")
+    for operation in schedule:
+        print(operation)
     print("Makespan:", makespan)
-
