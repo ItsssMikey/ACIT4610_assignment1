@@ -25,7 +25,7 @@ def load_instance(filepath):
 
     return num_jobs, num_machines, jobs
 
-num_jobs, num_machines, jobs = load_instance("./la01.txt")
+num_jobs, num_machines, jobs = load_instance("./data/la01.txt")
 
 # print("Jobs:", num_jobs)
 # print("Machines:", num_machines)
@@ -130,7 +130,7 @@ def fitness(chromosome, jobs, num_jobs, num_machines):
         num_machines
     )
 
-    return 1 / makespan
+    return makespan
 
 def tournament_selection(
     population,
@@ -148,7 +148,7 @@ def tournament_selection(
         jobs,
         num_jobs,
         num_machines
-    ) >= fitness(
+    ) <= fitness(
         candidate2,
         jobs,
         num_jobs,
@@ -227,7 +227,7 @@ def genetic_algorithm(
         for _ in range(population_size)
     ]
 
-    best_chromosome = max(
+    best_chromosome = min(
         population,
         key=lambda chromosome: fitness(
             chromosome,
@@ -242,7 +242,7 @@ def genetic_algorithm(
         generations + 1
     ):
 
-        generation_best = max(
+        generation_best = min(
             population,
             key=lambda chromosome: fitness(
                 chromosome,
@@ -257,7 +257,7 @@ def genetic_algorithm(
             jobs,
             num_jobs,
             num_machines
-        ) > fitness(
+        ) < fitness(
             best_chromosome,
             jobs,
             num_jobs,
@@ -266,8 +266,8 @@ def genetic_algorithm(
             best_chromosome = generation_best.copy()
 
         print(
-                    f"Generation {generation}: Best Fitness = {fitness(best_chromosome, jobs, num_jobs, num_machines)}"
-                )
+            f"Generation {generation}: Best Fitness = {fitness(best_chromosome, jobs, num_jobs, num_machines)}"
+        )
 
         new_population = []
 
@@ -316,7 +316,7 @@ def genetic_algorithm(
 
         population = new_population
 
-    final_best = max(
+    final_best = min(
         population,
         key=lambda chromosome: fitness(
             chromosome,
@@ -330,7 +330,7 @@ def genetic_algorithm(
         jobs,
         num_jobs,
         num_machines
-    ) > fitness(
+    ) < fitness(
         best_chromosome,
         jobs,
         num_jobs,
