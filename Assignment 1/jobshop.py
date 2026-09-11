@@ -130,7 +130,7 @@ def fitness(chromosome, jobs, num_jobs, num_machines):
         num_machines
     )
 
-    return 1 / makespan
+    return makespan
 
 def tournament_selection(
     population,
@@ -148,7 +148,7 @@ def tournament_selection(
         jobs,
         num_jobs,
         num_machines
-    ) >= fitness(
+    ) <= fitness(
         candidate2,
         jobs,
         num_jobs,
@@ -157,32 +157,55 @@ def tournament_selection(
         return candidate1
     return candidate2
 
-def crossover(parent1, parent2):
-    size = len(parent1)
-    child1 = [None] * size
-    child2 = [None] * size
+def crossover(parent1, parent2, num_jobs, num_machines):
+    '''
+    Perform crossover while preserving the number of operations for each job.
+    '''
 
-    gene1 = random.choice(parent1)
-    gene2 = random.choice(parent2)
+    list_len = len(parent1)
 
-    remaining_for_child1 = parent2.copy()
-    remaining_for_child2 = parent1.copy()
+    child1 = [None] * list_len
+    child2 = [None] * list_len
 
-    for index in range(size):
-        if parent1[index] == gene1:
-            child1[index] = gene1
-            remaining_for_child1.remove(gene1)
+    target_indices = random.sample(range(list_len), list_len // 2)
 
-        if parent2[index] == gene2:
-            child2[index] = gene2
-            remaining_for_child2.remove(gene2)
+    for index in target_indices:
+        child1[index] = parent1[index]
+    indices_child2 = [i for i, val in enumerate(child1) if val is None]
+    for index in indices_child2:
+        child2[index] = parent2[index]
 
-    for index in range(size):
-        if child1[index] is None:
-            child1[index] = remaining_for_child1.pop(0)
+    counts_child1 = [0] * num_jobs
+    for job in child1:
+        if job is not None:
+            counts_child1[job] += 1
 
-        if child2[index] is None:
-            child2[index] = remaining_for_child2.pop(0)
+    p2_index = 0
+    for i in range(list_len):
+        if child1[i] is None:
+            while p2_index < list_len:
+                candidate_job = parent2[p2_index]
+                p2_index += 1
+                if counts_child1[candidate_job] < num_machines:
+                    child1[i] = candidate_job
+                    counts_child1[candidate_job] += 1
+                    break
+
+    counts_child2 = [0] * num_jobs
+    for job in child2:
+        if job is not None:
+            counts_child2[job] += 1
+
+    p1_index = 0
+    for i in range(list_len):
+        if child2[i] is None:
+            while p1_index < list_len:
+                candidate_job = parent1[p1_index]
+                p1_index += 1
+                if counts_child2[candidate_job] < num_machines:
+                    child2[i] = candidate_job
+                    counts_child2[candidate_job] += 1
+                    break
 
     return child1, child2
 
@@ -222,12 +245,13 @@ def genetic_algorithm(
     mutation_rate=0.1,
     crossover_rate=0.8
 ):
-    population = [
-        create_chromosome(num_jobs, num_machines)
-        for _ in range(population_size)
-    ]
+    population = create_population(
+        population_size,
+        num_jobs,
+        num_machines
+    )
 
-    best_chromosome = max(
+    best_chromosome = min(
         population,
         key=lambda chromosome: fitness(
             chromosome,
@@ -242,7 +266,7 @@ def genetic_algorithm(
         generations + 1
     ):
 
-        generation_best = max(
+        generation_best = min(
             population,
             key=lambda chromosome: fitness(
                 chromosome,
@@ -257,13 +281,17 @@ def genetic_algorithm(
             jobs,
             num_jobs,
             num_machines
-        ) > fitness(
+        ) < fitness(
             best_chromosome,
             jobs,
             num_jobs,
             num_machines
         ):
             best_chromosome = generation_best.copy()
+
+        print(
+            f"Generation {generation}: Best Fitness = {fitness(best_chromosome, jobs, num_jobs, num_machines)}"
+        )
 
         new_population = []
 
@@ -287,7 +315,9 @@ def genetic_algorithm(
             if crossover_probability < crossover_rate:
                 child1, child2 = crossover(
                     parent1,
-                    parent2
+                    parent2,
+                    num_jobs,
+                    num_machines
                 )
 
             else:
@@ -312,7 +342,7 @@ def genetic_algorithm(
 
         population = new_population
 
-    final_best = max(
+    final_best = min(
         population,
         key=lambda chromosome: fitness(
             chromosome,
@@ -326,7 +356,7 @@ def genetic_algorithm(
         jobs,
         num_jobs,
         num_machines
-    ) > fitness(
+    ) < fitness(
         best_chromosome,
         jobs,
         num_jobs,
@@ -341,9 +371,9 @@ if __name__ == "__main__":
         jobs,
         num_jobs,
         num_machines,
-        population_size=100,
-        generations=1000,
-        mutation_rate=0.1,
+        population_size=5,
+        generations=100,
+        mutation_rate=0.5,
         crossover_rate=0.8
     )
 
@@ -358,3 +388,4 @@ if __name__ == "__main__":
     for operation in schedule:
         print(operation)
     print("Makespan:", makespan)
+
