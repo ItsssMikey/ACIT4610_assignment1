@@ -8,7 +8,6 @@ JOBS = None
 TURNAMNET_SIZE = 0
 
 
-
 def load_instance(filepath):
     with open(filepath, "r") as file:
         lines = file.readlines()
@@ -37,7 +36,7 @@ def load_instance(filepath):
 # print("Machines:", NUM_MACHINES)
 # print("Job 0:", JOBS[0])
 
-def create_chromosome(NUM_JOBS, NUM_MACHINES):
+def create_chromosome():
     '''
     Creates a random chromosome for the job shop scheduling problem.
     Each job is represented by its ID, and the chromosome is a list of job IDs.
@@ -52,13 +51,13 @@ def create_chromosome(NUM_JOBS, NUM_MACHINES):
 
     return chromosome
 
-chromosome = create_chromosome(NUM_JOBS, NUM_MACHINES)
+# chromosome = create_chromosome()
 
 # print("Chromosome:", chromosome)
 # print(len(chromosome))
 
 
-def decode_chromosome(chromosome, JOBS, NUM_JOBS, NUM_MACHINES):
+def decode_chromosome(chromosome):
     '''
     Decodes a chromosome into a schedule and calculates the makespan.
     The schedule is represented as a list of dictionaries, where each dictionary contains:
@@ -103,46 +102,14 @@ def decode_chromosome(chromosome, JOBS, NUM_JOBS, NUM_MACHINES):
 
     return schedule, makespan
 
-# ========== Test the functions ==========
-# chromosome = create_chromosome(
-#     NUM_JOBS,
-#     NUM_MACHINES
-# )
 
-# schedule, makespan = decode_chromosome(
-#     chromosome,
-#     JOBS,
-#     NUM_JOBS,
-#     NUM_MACHINES
-# )
-
-# print("Chromosome:")
-# print(chromosome)
-
-# print("\nSchedule:")
-# for operation in schedule:
-#     print(operation)
-
-# print("\nMakespan:")
-# print(makespan)
-
-# =======================================
-
-def fitness(chromosome, JOBS, NUM_JOBS, NUM_MACHINES):
-    _, makespan = decode_chromosome(
-        chromosome,
-        JOBS,
-        NUM_JOBS,
-        NUM_MACHINES
-    )
+def fitness(chromosome):
+    _, makespan = decode_chromosome(chromosome)
 
     return makespan
 
 def tournament_selection(
     population,
-    JOBS,
-    NUM_JOBS,
-    NUM_MACHINES,
     turnament_size = 2
 ):
     candidate_list = random.sample(
@@ -150,14 +117,8 @@ def tournament_selection(
         turnament_size
     )
 
-    candidate_fitness_list = []
-
-    for candidate in candidate_list:
-        candidate_fitness_list.append([fitness(candidate, JOBS, NUM_JOBS, NUM_MACHINES),candidate])
-
-    candidate_fitness_list_sorted = sorted(candidate_fitness_list, key=lambda item: item[0])
-
-    return candidate_fitness_list_sorted[0][1]
+    candidate_list_sorted = sorted(candidate_list, key=lambda item: item[1])
+    return candidate_list_sorted[0]
 
 def crossover_pox(parent1, parent2):
     list_len = len(parent1)
@@ -207,170 +168,119 @@ def mutate(chromosome):
 
     return chromosome_copy
 
-def create_population(population_size, NUM_JOBS, NUM_MACHINES):
+def create_population(population_size):
     '''
     Create an initial population of chromosomes for the job shop scheduling problem.
     Each chromosome is a random permutation of job IDs, where each job ID appears as many times as it has operations (equal to the number of machines).
     '''
     population = [
-        create_chromosome(NUM_JOBS, NUM_MACHINES)
+        create_chromosome()
         for _ in range(population_size)
     ]
+    
+    population_fitness_list = []
+    for chromosome in population:
+        fitness_value = fitness(chromosome)
+        population_fitness_list.append([chromosome, fitness_value])
 
-    return population
+    return population_fitness_list
 
 
 # =========== Main Genetic Algorithm Function ===========
 
 def genetic_algorithm(
-    JOBS,
-    NUM_JOBS,
-    NUM_MACHINES,
     population_size=100,
     generations=1000,
     mutation_rate=0.1,
     crossover_rate=0.8
 ):
-    population = [
-        create_chromosome(NUM_JOBS, NUM_MACHINES)
-        for _ in range(population_size)
-    ]
+    population_fitness_list = create_population(population_size)
 
-    best_chromosome = min(
-        population,
-        key=lambda chromosome: fitness(
-            chromosome,
-            JOBS,
-            NUM_JOBS,
-            NUM_MACHINES
-        )
-    ).copy()
+    best_entry = min(population_fitness_list, key=lambda item: item[1])
 
-    for generation in range(
-        1,
-        generations + 1
-    ):
+    best_chromosome = best_entry[0].copy()
+    best_fitness = best_entry[1]
 
-        generation_best = min(
-            population,
-            key=lambda chromosome: fitness(
-                chromosome,
-                JOBS,
-                NUM_JOBS,
-                NUM_MACHINES
-            )
-        )
+    for generation in range(1,generations + 1):
+        generation_best = min(population_fitness_list, key=lambda item: item[1])
 
-        if fitness(
-            generation_best,
-            JOBS,
-            NUM_JOBS,
-            NUM_MACHINES
-        ) < fitness(
-            best_chromosome,
-            JOBS,
-            NUM_JOBS,
-            NUM_MACHINES
-        ):
+        if generation_best[1] < best_fitness:
             best_chromosome = generation_best.copy()
 
         print(
-            f"Generation {generation}: Best Fitness = {fitness(best_chromosome, JOBS, NUM_JOBS, NUM_MACHINES)}"
+            f"Generation {generation}: Best Fitness = {best_chromosome[1]}"
         )
 
         new_population = []
 
         while len(new_population) < population_size:
             parent1 = tournament_selection(
-                population,
-                JOBS,
-                NUM_JOBS,
-                NUM_MACHINES
+                population_fitness_list
             )
             parent2 = tournament_selection(
-                population,
-                JOBS,
-                NUM_JOBS,
-                NUM_MACHINES
+                population_fitness_list
             )
+
+            parent_chromosom1 = parent1[0]
+            parent_chromosom2 = parent2[0]
 
             # Crossover
             crossover_probability = random.random()
 
             if crossover_probability < crossover_rate:
-                child1, child2 = crossover_pox(
-                    parent1,
-                    parent2
+                child_chromosome1, child_chromosome2 = crossover_pox(
+                    parent_chromosom1,
+                    parent_chromosom2
                 )
 
             else:
-                child1 = parent1.copy()
-                child2 = parent2.copy()
+                child_chromosome1 = parent_chromosom1.copy()
+                child_chromosome2 = parent_chromosom2.copy()
 
             # Mutation
             mutation_probability1 = random.random()
 
             if mutation_probability1 < mutation_rate:
-                child1 = mutate(child1)
+                child_chromosome1 = mutate(child_chromosome1)
 
             mutation_probability2 = random.random()
 
             if mutation_probability2 < mutation_rate:
-                child2 = mutate(child2)
+                child_chromosome2 = mutate(child_chromosome2)
+
+            child1 = [child_chromosome1,fitness(child_chromosome1)]
+            child2 = [child_chromosome2,fitness(child_chromosome2)]
 
             # Add children to new population
             new_population.append(child1)
             if len(new_population) < population_size:
                 new_population.append(child2)
 
-        population = new_population
+        population_fitness_list = new_population
 
     final_best = min(
-        population,
-        key=lambda chromosome: fitness(
-            chromosome,
-            JOBS,
-            NUM_JOBS,
-            NUM_MACHINES
-        )
+        population_fitness_list,
+        key=lambda item: item[1]
     )
-    if fitness(
-        final_best,
-        JOBS,
-        NUM_JOBS,
-        NUM_MACHINES
-    ) < fitness(
-        best_chromosome,
-        JOBS,
-        NUM_JOBS,
-        NUM_MACHINES
-    ):
+    if final_best[1] < best_chromosome[1]:
         best_chromosome = final_best.copy()
 
     return best_chromosome
     
 if __name__ == "__main__":
-    NUM_JOBS, NUM_MACHINES, JOBS = load_instance("./data/la35.txt")
+    NUM_JOBS, NUM_MACHINES, JOBS = load_instance("./data/la01.txt")
 
     for _ in range(0,1,1):
         best_solution = genetic_algorithm(
-            JOBS,
-            NUM_JOBS,
-            NUM_MACHINES,
             population_size=200,
             generations=1000,
             mutation_rate=0.1,
             crossover_rate=0.8
         )
 
-        print("Best solution found:", best_solution)
-        schedule, makespan = decode_chromosome(
-            best_solution,
-            JOBS,
-            NUM_JOBS,
-            NUM_MACHINES
-        )
-        # print("\nSchedule:")
-        # for operation in schedule:
-        #     print(operation)
+        print("Best solution found:", best_solution[0])
+        schedule, makespan = decode_chromosome(best_solution[0])
+        print("\nSchedule:")
+        for operation in schedule:
+            print(operation)
         print("Makespan:", makespan)
