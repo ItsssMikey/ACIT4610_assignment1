@@ -5,7 +5,7 @@ DATASET_PATH = './data/la35.txt'
 NUM_JOBS = 0
 NUM_MACHINES = 0
 JOBS = None
-TURNAMNET_SIZE = 0
+TOURNAMENT_SIZE = 2
 
 
 def load_instance(filepath):
@@ -104,17 +104,38 @@ def decode_chromosome(chromosome):
 
 
 def fitness(chromosome):
-    _, makespan = decode_chromosome(chromosome)
+    job_counters = [0] * NUM_JOBS
+    
+    job_ready_times = [0] * NUM_JOBS
+    machine_ready_times = [0] * NUM_MACHINES
+
+    for job_id in chromosome:
+        operation_id = job_counters[job_id]
+
+        machine, processing_time = JOBS[job_id][operation_id]
+
+        start_time = max(
+            job_ready_times[job_id],
+            machine_ready_times[machine]
+        )
+        finish_time = start_time + processing_time
+
+        job_ready_times[job_id] = finish_time
+        machine_ready_times[machine] = finish_time
+
+        job_counters[job_id] += 1
+
+    makespan = max(machine_ready_times)
 
     return makespan
 
 def tournament_selection(
     population,
-    turnament_size = 2
+    tournament_size = 2
 ):
     candidate_list = random.sample(
         population,
-        turnament_size
+        tournament_size
     )
 
     candidate_list_sorted = sorted(candidate_list, key=lambda item: item[1])
@@ -198,27 +219,28 @@ def genetic_algorithm(
 
     best_entry = min(population_fitness_list, key=lambda item: item[1])
 
-    best_chromosome = best_entry[0].copy()
-    best_fitness = best_entry[1]
+    best_entry = [best_entry[0].copy(), best_entry[1]]
 
     for generation in range(1,generations + 1):
         generation_best = min(population_fitness_list, key=lambda item: item[1])
 
-        if generation_best[1] < best_fitness:
-            best_chromosome = generation_best.copy()
+        if generation_best[1] < best_entry[1]:
+            best_entry = [generation_best[0].copy(), generation_best[1]]
 
         print(
-            f"Generation {generation}: Best Fitness = {best_chromosome[1]}"
+            f"Generation {generation}: Best Fitness = {best_entry[1]}"
         )
 
         new_population = []
 
         while len(new_population) < population_size:
             parent1 = tournament_selection(
-                population_fitness_list
+                population_fitness_list,
+                TOURNAMENT_SIZE
             )
             parent2 = tournament_selection(
-                population_fitness_list
+                population_fitness_list,
+                TOURNAMENT_SIZE
             )
 
             parent_chromosom1 = parent1[0]
@@ -262,13 +284,13 @@ def genetic_algorithm(
         population_fitness_list,
         key=lambda item: item[1]
     )
-    if final_best[1] < best_chromosome[1]:
-        best_chromosome = final_best.copy()
+    if final_best[1] < best_entry[1]:
+        best_entry = final_best.copy()
 
-    return best_chromosome
+    return best_entry
     
 if __name__ == "__main__":
-    NUM_JOBS, NUM_MACHINES, JOBS = load_instance("./data/la01.txt")
+    NUM_JOBS, NUM_MACHINES, JOBS = load_instance(DATASET_PATH)
 
     for _ in range(0,1,1):
         best_solution = genetic_algorithm(
