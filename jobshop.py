@@ -1,14 +1,21 @@
 import random
 
-from matplotlib.pylab import size
+#GLOBALS
+DATASET_PATH = './data/la35.txt'
+NUM_JOBS = 0
+NUM_MACHINES = 0
+JOBS = None
+TURNAMNET_SIZE = 0
+
+
 
 def load_instance(filepath):
     with open(filepath, "r") as file:
         lines = file.readlines()
 
-    num_jobs, num_machines = map(int, lines[0].split())
+    NUM_JOBS, NUM_MACHINES = map(int, lines[0].split())
 
-    jobs = []
+    JOBS = []
 
     for line in lines[1:]:
         values = list(map(int, line.split()))
@@ -21,17 +28,16 @@ def load_instance(filepath):
 
             operations.append((machine, processing_time))
 
-        jobs.append(operations)
+        JOBS.append(operations)
 
-    return num_jobs, num_machines, jobs
+    return NUM_JOBS, NUM_MACHINES, JOBS
 
-num_jobs, num_machines, jobs = load_instance("./data/la01.txt")
 
-# print("Jobs:", num_jobs)
-# print("Machines:", num_machines)
-# print("Job 0:", jobs[0])
+# print("Jobs:", NUM_JOBS)
+# print("Machines:", NUM_MACHINES)
+# print("Job 0:", JOBS[0])
 
-def create_chromosome(num_jobs, num_machines):
+def create_chromosome(NUM_JOBS, NUM_MACHINES):
     '''
     Creates a random chromosome for the job shop scheduling problem.
     Each job is represented by its ID, and the chromosome is a list of job IDs.
@@ -39,40 +45,40 @@ def create_chromosome(num_jobs, num_machines):
     '''
     chromosome = []
 
-    for job_id in range(num_jobs):
-        chromosome.extend([job_id] * num_machines)
+    for job_id in range(NUM_JOBS):
+        chromosome.extend([job_id] * NUM_MACHINES)
 
     random.shuffle(chromosome)
 
     return chromosome
 
-chromosome = create_chromosome(num_jobs, num_machines)
+chromosome = create_chromosome(NUM_JOBS, NUM_MACHINES)
 
 # print("Chromosome:", chromosome)
 # print(len(chromosome))
 
 
-def decode_chromosome(chromosome, jobs, num_jobs, num_machines):
+def decode_chromosome(chromosome, JOBS, NUM_JOBS, NUM_MACHINES):
     '''
     Decodes a chromosome into a schedule and calculates the makespan.
     The schedule is represented as a list of dictionaries, where each dictionary contains:
     - job: the job ID
-    - operation: the operation ID (0 to num_machines-1)
+    - operation: the operation ID (0 to NUM_MACHINES-1)
     - machine: the machine ID for this operation
     - start: the start time of the operation
     - finish: the finish time of the operation
     '''
-    job_counters = [0] * num_jobs
+    job_counters = [0] * NUM_JOBS
 
-    job_ready_times = [0] * num_jobs
-    machine_ready_times = [0] * num_machines
+    job_ready_times = [0] * NUM_JOBS
+    machine_ready_times = [0] * NUM_MACHINES
 
     schedule = []
 
     for job_id in chromosome:
         operation_id = job_counters[job_id]
 
-        machine, processing_time = jobs[job_id][operation_id]
+        machine, processing_time = JOBS[job_id][operation_id]
 
         start_time = max(
             job_ready_times[job_id],
@@ -99,15 +105,15 @@ def decode_chromosome(chromosome, jobs, num_jobs, num_machines):
 
 # ========== Test the functions ==========
 # chromosome = create_chromosome(
-#     num_jobs,
-#     num_machines
+#     NUM_JOBS,
+#     NUM_MACHINES
 # )
 
 # schedule, makespan = decode_chromosome(
 #     chromosome,
-#     jobs,
-#     num_jobs,
-#     num_machines
+#     JOBS,
+#     NUM_JOBS,
+#     NUM_MACHINES
 # )
 
 # print("Chromosome:")
@@ -122,67 +128,70 @@ def decode_chromosome(chromosome, jobs, num_jobs, num_machines):
 
 # =======================================
 
-def fitness(chromosome, jobs, num_jobs, num_machines):
+def fitness(chromosome, JOBS, NUM_JOBS, NUM_MACHINES):
     _, makespan = decode_chromosome(
         chromosome,
-        jobs,
-        num_jobs,
-        num_machines
+        JOBS,
+        NUM_JOBS,
+        NUM_MACHINES
     )
 
     return makespan
 
 def tournament_selection(
     population,
-    jobs,
-    num_jobs,
-    num_machines
+    JOBS,
+    NUM_JOBS,
+    NUM_MACHINES,
+    turnament_size = 2
 ):
-    candidate1, candidate2 = random.sample(
+    candidate_list = random.sample(
         population,
-        2
+        turnament_size
     )
 
-    if fitness(
-        candidate1,
-        jobs,
-        num_jobs,
-        num_machines
-    ) <= fitness(
-        candidate2,
-        jobs,
-        num_jobs,
-        num_machines
-    ):
-        return candidate1
-    return candidate2
+    candidate_fitness_list = []
 
-def crossover(parent1, parent2):
-    size = len(parent1)
-    child1 = [None] * size
-    child2 = [None] * size
+    for candidate in candidate_list:
+        candidate_fitness_list.append([fitness(candidate, JOBS, NUM_JOBS, NUM_MACHINES),candidate])
 
-    gene1 = random.choice(parent1)
-    gene2 = random.choice(parent2)
+    candidate_fitness_list_sorted = sorted(candidate_fitness_list, key=lambda item: item[0])
 
-    remaining_for_child1 = parent2.copy()
-    remaining_for_child2 = parent1.copy()
+    return candidate_fitness_list_sorted[0][1]
 
-    for index in range(size):
-        if parent1[index] == gene1:
-            child1[index] = gene1
-            remaining_for_child1.remove(gene1)
+def crossover_pox(parent1, parent2):
+    list_len = len(parent1)
+    child1 = [None] * list_len
+    child2 = [None] * list_len
 
-        if parent2[index] == gene2:
-            child2[index] = gene2
-            remaining_for_child2.remove(gene2)
+    selected_JOBS = set(random.sample(range(NUM_JOBS),NUM_JOBS // 2))
 
-    for index in range(size):
+
+    remaining_for_child1 = []
+    for job in parent2:
+        if job not in selected_JOBS:
+            remaining_for_child1.append(job)
+
+    remaining_for_child2 = []
+    for job in parent1:
+            if job not in selected_JOBS:
+                remaining_for_child2.append(job)
+
+    for index in range(list_len):
+        if parent1[index] in selected_JOBS:
+            child1[index] = parent1[index]
+        if parent2[index] in selected_JOBS:
+            child2[index] = parent2[index]
+
+    p2_idx = 0
+    p1_idx = 0
+    for index in range(list_len):
         if child1[index] is None:
-            child1[index] = remaining_for_child1.pop(0)
-
+            child1[index] = remaining_for_child1[p2_idx]
+            p2_idx += 1
         if child2[index] is None:
-            child2[index] = remaining_for_child2.pop(0)
+            child2[index] = remaining_for_child2[p1_idx]
+            p1_idx += 1
 
     return child1, child2
 
@@ -198,13 +207,13 @@ def mutate(chromosome):
 
     return chromosome_copy
 
-def create_population(population_size, num_jobs, num_machines):
+def create_population(population_size, NUM_JOBS, NUM_MACHINES):
     '''
     Create an initial population of chromosomes for the job shop scheduling problem.
     Each chromosome is a random permutation of job IDs, where each job ID appears as many times as it has operations (equal to the number of machines).
     '''
     population = [
-        create_chromosome(num_jobs, num_machines)
+        create_chromosome(NUM_JOBS, NUM_MACHINES)
         for _ in range(population_size)
     ]
 
@@ -214,16 +223,16 @@ def create_population(population_size, num_jobs, num_machines):
 # =========== Main Genetic Algorithm Function ===========
 
 def genetic_algorithm(
-    jobs,
-    num_jobs,
-    num_machines,
+    JOBS,
+    NUM_JOBS,
+    NUM_MACHINES,
     population_size=100,
     generations=1000,
     mutation_rate=0.1,
     crossover_rate=0.8
 ):
     population = [
-        create_chromosome(num_jobs, num_machines)
+        create_chromosome(NUM_JOBS, NUM_MACHINES)
         for _ in range(population_size)
     ]
 
@@ -231,9 +240,9 @@ def genetic_algorithm(
         population,
         key=lambda chromosome: fitness(
             chromosome,
-            jobs,
-            num_jobs,
-            num_machines
+            JOBS,
+            NUM_JOBS,
+            NUM_MACHINES
         )
     ).copy()
 
@@ -246,27 +255,27 @@ def genetic_algorithm(
             population,
             key=lambda chromosome: fitness(
                 chromosome,
-                jobs,
-                num_jobs,
-                num_machines
+                JOBS,
+                NUM_JOBS,
+                NUM_MACHINES
             )
         )
 
         if fitness(
             generation_best,
-            jobs,
-            num_jobs,
-            num_machines
+            JOBS,
+            NUM_JOBS,
+            NUM_MACHINES
         ) < fitness(
             best_chromosome,
-            jobs,
-            num_jobs,
-            num_machines
+            JOBS,
+            NUM_JOBS,
+            NUM_MACHINES
         ):
             best_chromosome = generation_best.copy()
 
         print(
-            f"Generation {generation}: Best Fitness = {fitness(best_chromosome, jobs, num_jobs, num_machines)}"
+            f"Generation {generation}: Best Fitness = {fitness(best_chromosome, JOBS, NUM_JOBS, NUM_MACHINES)}"
         )
 
         new_population = []
@@ -274,22 +283,22 @@ def genetic_algorithm(
         while len(new_population) < population_size:
             parent1 = tournament_selection(
                 population,
-                jobs,
-                num_jobs,
-                num_machines
+                JOBS,
+                NUM_JOBS,
+                NUM_MACHINES
             )
             parent2 = tournament_selection(
                 population,
-                jobs,
-                num_jobs,
-                num_machines
+                JOBS,
+                NUM_JOBS,
+                NUM_MACHINES
             )
 
             # Crossover
             crossover_probability = random.random()
 
             if crossover_probability < crossover_rate:
-                child1, child2 = crossover(
+                child1, child2 = crossover_pox(
                     parent1,
                     parent2
                 )
@@ -320,45 +329,48 @@ def genetic_algorithm(
         population,
         key=lambda chromosome: fitness(
             chromosome,
-            jobs,
-            num_jobs,
-            num_machines
+            JOBS,
+            NUM_JOBS,
+            NUM_MACHINES
         )
     )
     if fitness(
         final_best,
-        jobs,
-        num_jobs,
-        num_machines
+        JOBS,
+        NUM_JOBS,
+        NUM_MACHINES
     ) < fitness(
         best_chromosome,
-        jobs,
-        num_jobs,
-        num_machines
+        JOBS,
+        NUM_JOBS,
+        NUM_MACHINES
     ):
         best_chromosome = final_best.copy()
 
     return best_chromosome
     
 if __name__ == "__main__":
-    best_solution = genetic_algorithm(
-        jobs,
-        num_jobs,
-        num_machines,
-        population_size=100,
-        generations=2000,
-        mutation_rate=0.1,
-        crossover_rate=0.8
-    )
+    NUM_JOBS, NUM_MACHINES, JOBS = load_instance("./data/la35.txt")
 
-    print("Best solution found:", best_solution)
-    schedule, makespan = decode_chromosome(
-        best_solution,
-        jobs,
-        num_jobs,
-        num_machines
-    )
-    print("\nSchedule:")
-    for operation in schedule:
-        print(operation)
-    print("Makespan:", makespan)
+    for _ in range(0,1,1):
+        best_solution = genetic_algorithm(
+            JOBS,
+            NUM_JOBS,
+            NUM_MACHINES,
+            population_size=200,
+            generations=1000,
+            mutation_rate=0.1,
+            crossover_rate=0.8
+        )
+
+        print("Best solution found:", best_solution)
+        schedule, makespan = decode_chromosome(
+            best_solution,
+            JOBS,
+            NUM_JOBS,
+            NUM_MACHINES
+        )
+        # print("\nSchedule:")
+        # for operation in schedule:
+        #     print(operation)
+        print("Makespan:", makespan)
