@@ -40,45 +40,18 @@ class GeneticAlgorithm:
         return chromosome 
 
 
-    def fitness(self, chromosome):
+    def decode(self, chromosome, return_schedule=False):
         '''
-        Decodes a chromosome and returns the makespan.
-        '''
-        job_counters = [0] * self.num_jobs
-
-        job_ready_times = [0] * self.num_jobs
-        machine_ready_times = [0] * self.num_machines
-
-        for job_id in chromosome:
-            operation_id = job_counters[job_id]
-
-            machine, processing_time = self.jobs[job_id][operation_id]
-
-            start_time = max(
-                job_ready_times[job_id],
-                machine_ready_times[machine]
-            )
-            finish_time = start_time + processing_time
-
-            job_ready_times[job_id] = finish_time
-            machine_ready_times[machine] = finish_time
-            
-            job_counters[job_id] += 1
-
-        makespan = max(machine_ready_times)
-
-        return makespan
-
-
-    def build_schedule(self, chromosome):
-        '''
-        Decodes a chromosome into a schedule and calculates the makespan.
+        Decodes a chromosome using a semi-active schedule builder.
+        Checks when the previous operation is done and when the required machine is ready.
+        The maximum of these two is then the start time where both of these are fulfilled.
         The schedule is represented as a list of dictionaries, where each dictionary contains:
         - job: the job ID
         - operation: the operation ID (0 to NUM_MACHINES-1)
         - machine: the machine ID for this operation
         - start: the start time of the operation
         - finish: the finish time of the operation
+        Returns the makespan, and optionally the schedule.
         '''
         job_counters = [0] * self.num_jobs
 
@@ -98,13 +71,14 @@ class GeneticAlgorithm:
             )
             finish_time = start_time + processing_time
 
-            schedule.append({
-                "job": job_id,
-                "operation": operation_id,
-                "machine": machine,
-                "start": start_time,
-                "finish": finish_time
-            })
+            if return_schedule:
+                schedule.append({
+                    "job": job_id,
+                    "operation": operation_id,
+                    "machine": machine,
+                    "start": start_time,
+                    "finish": finish_time
+                })
 
             job_ready_times[job_id] = finish_time
             machine_ready_times[machine] = finish_time
@@ -113,7 +87,25 @@ class GeneticAlgorithm:
 
         makespan = max(machine_ready_times)
 
-        return schedule, makespan
+        if return_schedule:
+            return schedule, makespan
+
+        return makespan
+
+
+    def fitness(self, chromosome):
+        '''
+        Wrapper for decode(), avoiding cost of building schedule dictionaries.
+        Returns the computed makespan.
+        '''
+        return self.decode(chromosome)
+
+    def build_schedule(self, chromosome):
+        '''
+        Another wrapper for decode().
+        Returns the schedule along with it's computed makespan.
+        '''
+        return self.decode(chromosome, return_schedule=True)
 
 
     def create_population(self):
