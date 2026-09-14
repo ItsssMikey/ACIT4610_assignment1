@@ -37,7 +37,7 @@ class GeneticAlgorithm:
 
         random.shuffle(chromosome)
 
-        return chromosome
+        return chromosome 
 
 
     def fitness(self, chromosome):
@@ -191,12 +191,13 @@ class GeneticAlgorithm:
             
         return mutant
 
-    def run(self):
+    def run(self, verbose=True):
         population_fitness_list = self.create_population()
 
         best_entry = min(population_fitness_list, key=lambda item: item[1])
 
         best_entry = [best_entry[0].copy(), best_entry[1]]
+        history = []
 
         for generation in range(1, self.generations + 1):
             generation_best = min(population_fitness_list, key=lambda item: item[1])
@@ -204,9 +205,12 @@ class GeneticAlgorithm:
             if generation_best[1] < best_entry[1]:
                 best_entry = [generation_best[0].copy(), generation_best[1]]
 
-            print(
-                f"Generation {generation}: Best Fitness = {best_entry[1]}"
-            )
+            history.append(best_entry[1])
+
+            if verbose:
+                print(
+                    f"Generation {generation}: Best Fitness = {best_entry[1]}"
+                )
 
             new_population = []
             # Elitism
@@ -253,9 +257,11 @@ class GeneticAlgorithm:
             key=lambda item: item[1]
         )
         if final_best[1] < best_entry[1]:
-            best_entry = final_best.copy()
+            best_entry = [final_best[0].copy(), final_best[1]]
+            if history:
+                history[-1] = best_entry[1]
 
-        return best_entry
+        return best_entry, history
 
 
 def load_data(filepath):
@@ -288,9 +294,9 @@ if __name__ == "__main__":
     instance = load_data("./data/la35.txt")
     jssp_solver = GeneticAlgorithm(instance)
 
-    best_solution = jssp_solver.run()
+    best_solution, history = jssp_solver.run()
 
-    print("Best solution found:", best_solution)
+    print("Best solution found:", best_solution[0])
     schedule, makespan = jssp_solver.build_schedule(best_solution[0])
     
     print("\nSchedule:")
