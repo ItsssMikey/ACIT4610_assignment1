@@ -26,9 +26,9 @@ INSTANCES = {
 
 # Three GA configurations to compare in the report
 PARAM_SETS = {
-    "A": dict(population_size=50,  generations=200,  crossover_rate=0.8, mutation_rate=0.1),
-    "B": dict(population_size=100, generations=500,  crossover_rate=0.8, mutation_rate=0.2),
-    "C": dict(population_size=150, generations=1000, crossover_rate=0.9, mutation_rate=0.3),
+    "A": dict(population_size=100, generations=1250,  crossover_rate=0.8, mutation_rate=0.05),
+    "B": dict(population_size=100, generations=1250, crossover_rate=0.8, mutation_rate=0.10),
+    "C": dict(population_size=100, generations=1250, crossover_rate=0.8, mutation_rate=0.05),
 }
 
 N_RUNS = 10  # repeats, assignment asks 10–30
@@ -79,7 +79,8 @@ def plot_gantt(schedule, makespan, title, out_path):
     """One row per machine; bars = operations (semi-active schedule)."""
     machines = sorted({op["machine"] for op in schedule})
     fig, ax = plt.subplots(figsize=(12, 4 + 0.4 * len(machines)))
-    colors = plt.cm.tab20.colors
+    cmap = plt.cm.tab20
+    colors = [cmap(i) for i in range(cmap.N)]
 
     for op in schedule:
         y = machines.index(op["machine"])
