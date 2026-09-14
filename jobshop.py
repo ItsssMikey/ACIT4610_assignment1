@@ -1,12 +1,15 @@
 import random
+import time
+
+# random.seed(42)
 
 class GeneticAlgorithm:
     def __init__(
         self,
         instance,
         population_size = 100,
-        generations     = 1000,
-        mutation_rate   = 0.2,
+        generations     = 1250,
+        mutation_rate   = 0.05,
         crossover_rate  = 0.8,
         tournament_size = 2,
     ):
@@ -176,19 +179,17 @@ class GeneticAlgorithm:
 
         return child1, child2
 
-
     def mutate(self, chromosome):
-        '''
-        Perform mutation on a chromosome by swapping two random genes.
-        '''
         mutant = chromosome.copy()
-
-        index1, index2 = random.sample(range(len(mutant)), 2)
-
-        mutant[index1], mutant[index2] = mutant[index2], mutant[index1]
-
+        i, j = random.sample(range(len(mutant)), 2)
+        
+        if random.random() < 0.75:
+            gene = mutant.pop(i)
+            mutant.insert(j, gene)
+        else:
+            mutant[i], mutant[j] = mutant[j], mutant[i]
+            
         return mutant
-
 
     def run(self):
         population_fitness_list = self.create_population()
@@ -208,6 +209,8 @@ class GeneticAlgorithm:
             )
 
             new_population = []
+            # Elitism
+            # new_population.append([best_entry[0].copy(), best_entry[1]])
 
             while len(new_population) < self.population_size:
                 parent1 = self.tournament_selection(population_fitness_list)
@@ -280,7 +283,9 @@ def load_data(filepath):
 
 
 if __name__ == "__main__":
-    instance = load_data("./data/la01.txt")
+    start = time.perf_counter()
+
+    instance = load_data("./data/la35.txt")
     jssp_solver = GeneticAlgorithm(instance)
 
     best_solution = jssp_solver.run()
@@ -292,3 +297,8 @@ if __name__ == "__main__":
     for operation in schedule:
         print(operation)
     print("Makespan:", makespan)
+
+    finish = time.perf_counter()
+    total_time_spend = finish-start
+
+    print(f'Time spend: {total_time_spend:.6f}')
