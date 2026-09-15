@@ -8,14 +8,20 @@ Depends on jobshop.py.
 """
 
 import csv
+import os
 import random
 import statistics
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 import matplotlib.pyplot as plt
 
 from jobshop import GeneticAlgorithm, load_data
+
+# Run on 4 CPU cores as requested
+NUM_WORKERS = 4
 
 # Assignment: 3 size categories × 2 Lawrence instances each
 INSTANCES = {
@@ -47,7 +53,8 @@ def convergence_generation(history):
 
 def one_run(instance_path, params, seed):
     """One full GA run → makespan, chromosome, time, convergence gen."""
-    random.seed(seed)
+    if seed is not None:
+        random.seed(seed)
     ga = GeneticAlgorithm(load_data(instance_path), **params)
 
     t0 = time.perf_counter()
@@ -59,6 +66,20 @@ def one_run(instance_path, params, seed):
         "chromosome": best_entry[0],
         "time": time.perf_counter() - t0,
         "convergence_gen": convergence_generation(history),
+    }
+
+
+def _worker_task(args):
+    """Worker function executed inside parallel process pool."""
+    category, path, set_name, params, run_idx, seed = args
+    run_result = one_run(path, params, seed)
+    return {
+        "category": category,
+        "instance": Path(path).stem,
+        "path": path,
+        "param_set": set_name,
+        "run_idx": run_idx,
+        **run_result,
     }
 
 
@@ -87,7 +108,8 @@ def plot_gantt(schedule, makespan, title, out_path):
         w = op["finish"] - op["start"]
         ax.barh(y, w, left=op["start"], height=0.6,
                 color=colors[op["job"] % len(colors)], edgecolor="black", linewidth=0.3)
-        ax.text(op["start"] + w / 2, y, f"J{op['job']}", ha="center", va="center", fontsize=7)
+        if makespan > 0 and (w / makespan) >= 0.02:
+            ax.text(op["start"] + w / 2, y, f"J{op['job']}", ha="center", va="center", fontsize=7)
 
     ax.set_yticks(range(len(machines)), [f"M{m}" for m in machines])
     ax.set_xlabel("Time")
@@ -138,17 +160,51 @@ def save_reports(rows, out_dir="results"):
     print(f"Wrote {out_dir}/time_table.csv and {out_dir}/bar_comparison.png")
 
 
-def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt"):
-    """Sweep all instances × param sets; write CSV, Gantts, and reports."""
+def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt", num_workers=NUM_WORKERS):
+    """Sweep all instances × param sets in parallel; write CSV, Gantts, and reports."""
     Path("results").mkdir(exist_ok=True)
     Path(gantt_dir).mkdir(parents=True, exist_ok=True)
+
+    tasks = []
+    for category, paths in INSTANCES.items():
+        for path in paths:
+            for set_name, params in PARAM_SETS.items():
+                for i in range(N_RUNS):
+                    tasks.append((category, path, set_name, params, i, 1000 + i))
+
+    total_tasks = len(tasks)
+    print(f"Starting {total_tasks} runs using {num_workers} parallel workers...")
+    t_start = time.perf_counter()
+
+    results_by_config = {}
+    completed_count = 0
+
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        futures = [executor.submit(_worker_task, t) for t in tasks]
+        for future in as_completed(futures):
+            res = future.result()
+            key = (res["category"], res["instance"], res["param_set"])
+            results_by_config.setdefault(key, []).append(res)
+            completed_count += 1
+            print(
+                f"[{completed_count:3d}/{total_tasks}] "
+                f"{res['instance']} Set {res['param_set']} "
+                f"(Run {res['run_idx']+1:2d}/{N_RUNS}) -> "
+                f"Makespan: {res['makespan']}, Time: {res['time']:.2f}s"
+            )
+
+    elapsed_all = time.perf_counter() - t_start
+    print(f"All {total_tasks} runs finished in {elapsed_all:.2f}s across {num_workers} cores.")
 
     rows = []
     for category, paths in INSTANCES.items():
         for path in paths:
             name = Path(path).stem  # e.g. "la01"
             for set_name, params in PARAM_SETS.items():
-                runs = [one_run(path, params, seed=1000 + i) for i in range(N_RUNS)]
+                key = (category, name, set_name)
+                runs = results_by_config[key]
+                runs.sort(key=lambda r: r["run_idx"])  # keep deterministic ordering
+
                 stats = summarize(runs)
                 print(name, set_name, stats)
 

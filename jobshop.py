@@ -132,8 +132,7 @@ class GeneticAlgorithm:
             self.tournament_size
         )
 
-        candidate_list_sorted = sorted(candidate_list, key=lambda item: item[1])
-        return candidate_list_sorted[0]
+        return min(candidate_list, key=lambda item: item[1])
 
 
     def crossover_pox(self, parent1, parent2):
