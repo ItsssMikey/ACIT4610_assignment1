@@ -4,6 +4,9 @@ import time
 # random.seed(42)
 
 class GeneticAlgorithm:
+    '''
+    Genetic algorithm solver for the Job Shop Scheduling Problem (JSSP).
+    '''
     def __init__(
         self,
         instance,
@@ -13,6 +16,9 @@ class GeneticAlgorithm:
         crossover_rate  = 0.8,
         tournament_size = 2,
     ):
+        '''
+        Initializes the genetic algorithm with problem instance and parameters.
+        '''
         self.num_jobs         = instance[0]
         self.num_machines     = instance[1]
         self.jobs             = instance[2]
@@ -110,8 +116,7 @@ class GeneticAlgorithm:
 
     def create_population(self):
         '''
-        Create an initial population of chromosomes for the job shop scheduling problem.
-        Each chromosome is a random permutation of job IDs, where each job ID appears as many times as it has operations (equal to the number of machines).
+        Create an initial population of chromosomes.
         '''
         population = [
             self.create_chromosome()
@@ -127,6 +132,9 @@ class GeneticAlgorithm:
 
 
     def tournament_selection(self, population):
+        '''
+        Selects the best individual from a random tournament sample.
+        '''
         candidate_list = random.sample(
             population,
             self.tournament_size
@@ -136,6 +144,9 @@ class GeneticAlgorithm:
 
 
     def crossover_pox(self, parent1, parent2):
+        '''
+        Applies Precedence Preserving Order-based Crossover (POX).
+        '''
         list_len = len(parent1)
         child1 = [None] * list_len
         child2 = [None] * list_len
@@ -171,6 +182,9 @@ class GeneticAlgorithm:
         return child1, child2
 
     def mutate(self, chromosome):
+        '''
+        Mutates a chromosome using insert (75%) or swap (25%).
+        '''
         mutant = chromosome.copy()
         i, j = random.sample(range(len(mutant)), 2)
         
@@ -183,6 +197,9 @@ class GeneticAlgorithm:
         return mutant
 
     def run(self, verbose=True):
+        '''
+        Executes the GA and returns (best_solution, history).
+        '''
         population_fitness_list = self.create_population()
 
         best_entry = min(population_fitness_list, key=lambda item: item[1])
@@ -256,6 +273,9 @@ class GeneticAlgorithm:
 
 
 def load_data(filepath):
+    '''
+    Loads and parses a JSSP benchmark file into (num_jobs, num_machines, jobs).
+    '''
     with open(filepath, "r") as file:
         lines = file.readlines()
     

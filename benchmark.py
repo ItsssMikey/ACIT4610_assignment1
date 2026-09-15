@@ -1,7 +1,7 @@
 """
 Experiment runner for the JSSP genetic algorithm.
 
-Runs each benchmark × 3 parameter sets × N_RUNS times (GA is random),
+Runs each benchmark x 3 parameter sets x N_RUNS times (GA is random),
 then writes metrics.csv, a time table, Gantt charts, and one comparison bar chart.
 
 Depends on jobshop.py.
@@ -20,24 +20,24 @@ import matplotlib.pyplot as plt
 
 from jobshop import GeneticAlgorithm, load_data
 
-# Run on 4 CPU cores as requested
-NUM_WORKERS = 4
+# Run on half of the available CPU cores
+NUM_WORKERS = os.cpu_count() // 2 or 1
 
-# Assignment: 3 size categories × 2 Lawrence instances each
+# 3 size categories x 2 Lawrence instances each
 INSTANCES = {
-    "small":  ["data/la01.txt", "data/la05.txt"],   # 10×5
-    "medium": ["data/la17.txt", "data/la20.txt"],   # 10×10
-    "large":  ["data/la32.txt", "data/la35.txt"],   # 30×10
+    "small":  ["data/la01.txt", "data/la05.txt"],   # 10x5
+    "medium": ["data/la17.txt", "data/la20.txt"],   # 10x10
+    "large":  ["data/la32.txt", "data/la35.txt"],   # 30x10
 }
 
 # Three GA configurations to compare in the report
 PARAM_SETS = {
     "A": dict(population_size=100, generations=1250,  crossover_rate=0.8, mutation_rate=0.05),
     "B": dict(population_size=100, generations=1250, crossover_rate=0.8, mutation_rate=0.10),
-    "C": dict(population_size=100, generations=1250, crossover_rate=0.8, mutation_rate=0.05),
+    "C": dict(population_size=100, generations=1250, crossover_rate=0.6, mutation_rate=0.05),
 }
 
-N_RUNS = 10  # repeats, assignment asks 10–30
+N_RUNS = 10  # repeats
 
 
 def convergence_generation(history):
@@ -121,7 +121,7 @@ def plot_gantt(schedule, makespan, title, out_path):
 
 
 def save_reports(rows, out_dir="results"):
-    """Time pivot (instance × A/B/C) + one bar chart (best makespan & avg time)."""
+    """Time pivot (instance x A/B/C) + one bar chart (best makespan & avg time)."""
     instances = list(dict.fromkeys(r["instance"] for r in rows))
     lookup = {(r["instance"], r["param_set"]): r for r in rows}
 
@@ -161,7 +161,7 @@ def save_reports(rows, out_dir="results"):
 
 
 def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt", num_workers=NUM_WORKERS):
-    """Sweep all instances × param sets in parallel; write CSV, Gantts, and reports."""
+    """Sweep all instances x param sets in parallel; write CSV, Gantts, and reports."""
     Path("results").mkdir(exist_ok=True)
     Path(gantt_dir).mkdir(parents=True, exist_ok=True)
 
