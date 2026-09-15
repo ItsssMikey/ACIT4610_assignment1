@@ -20,8 +20,10 @@ import matplotlib.pyplot as plt
 
 from jobshop import GeneticAlgorithm, load_data
 
+# -----AI Generated start-----
 # Run on half of the available CPU cores
 NUM_WORKERS = os.cpu_count() // 2 or 1
+# -----AI Generated end-----
 
 # 3 size categories x 2 Lawrence instances each
 INSTANCES = {
@@ -68,7 +70,7 @@ def one_run(instance_path, params, seed):
         "convergence_gen": convergence_generation(history),
     }
 
-
+# -----AI Generated start-----
 def _worker_task(args):
     """Worker function executed inside parallel process pool."""
     category, path, set_name, params, run_idx, seed = args
@@ -81,7 +83,7 @@ def _worker_task(args):
         "run_idx": run_idx,
         **run_result,
     }
-
+# -----AI Generated end-----
 
 def summarize(runs):
     """Assignment metrics across the N_RUNS repeats."""
@@ -165,6 +167,7 @@ def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt", num_worker
     Path("results").mkdir(exist_ok=True)
     Path(gantt_dir).mkdir(parents=True, exist_ok=True)
 
+    # -----AI Generated start-----
     tasks = []
     for category, paths in INSTANCES.items():
         for path in paths:
@@ -195,6 +198,7 @@ def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt", num_worker
 
     elapsed_all = time.perf_counter() - t_start
     print(f"All {total_tasks} runs finished in {elapsed_all:.2f}s across {num_workers} cores.")
+    # -----AI Generated end-----
 
     rows = []
     for category, paths in INSTANCES.items():
