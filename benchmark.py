@@ -9,7 +9,6 @@ Depends on jobshop.py.
 
 import csv
 import os
-import random
 import statistics
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -55,10 +54,8 @@ def convergence_generation(history):
     return len(history)
 
 
-def one_run(instance_path, params, seed):
+def one_run(instance_path, params):
     """One full GA run → makespan, chromosome, time, convergence gen, history."""
-    if seed is not None:
-        random.seed(seed)
     ga = GeneticAlgorithm(load_data(instance_path), **params)
 
     t0 = time.perf_counter()
@@ -77,8 +74,8 @@ def one_run(instance_path, params, seed):
 # -----AI Generated start-----
 def _worker_task(args):
     """Worker function executed inside parallel process pool."""
-    category, path, set_name, params, run_idx, seed = args
-    run_result = one_run(path, params, seed)
+    category, path, set_name, params, run_idx = args
+    run_result = one_run(path, params)
     return {
         "category": category,
         "instance": Path(path).stem,
@@ -193,7 +190,7 @@ def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt", num_worker
         for path in paths:
             for set_name, params in PARAM_SETS.items():
                 for i in range(N_RUNS):
-                    tasks.append((category, path, set_name, params, i, 1000 + i))
+                    tasks.append((category, path, set_name, params, i))
 
     total_tasks = len(tasks)
     print(f"Starting {total_tasks} runs using {num_workers} parallel workers...")
