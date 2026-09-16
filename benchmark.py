@@ -30,7 +30,7 @@ INSTANCES = {
     "large":  ["data/la32.txt", "data/la35.txt"],   # 30x10
 }
 
-# One-factor-at-a-time configs (gens fixed; mut kept in 0.03-0.10)
+# One-factor-at-a-time configs
 # A = baseline; B = mutation only; C = crossover only; D = population only
 PARAM_SETS = {
     "A": dict(population_size=100, generations=1250, crossover_rate=0.8, mutation_rate=0.05),
