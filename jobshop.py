@@ -220,8 +220,6 @@ class GeneticAlgorithm:
                 )
 
             new_population = []
-            # Elitism
-            # new_population.append([best_entry[0].copy(), best_entry[1]])
 
             while len(new_population) < self.population_size:
                 parent1 = self.tournament_selection(population_fitness_list)
