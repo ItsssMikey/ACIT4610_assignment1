@@ -21,9 +21,9 @@ python benchmark.py
 ### Parameters (`benchmark.py`)
 Configured at the top of `benchmark.py`:
 - `NUM_WORKERS`: Number of parallel CPU processes (default: `half of system cores`)
-- `N_RUNS`: Number of repeated runs per instance (default: `10`)
+- `N_RUNS`: Number of repeated runs per instance (default: `30`)
 - `INSTANCES`: Benchmark files to test from `data/`
-- `PARAM_SETS`: Parameter dictionaries to evaluate (A, B, C)
+- `PARAM_SETS`: Parameter dictionaries to evaluate (A, B, C, D)
 
 ### Outputs (`results/`)
 - `metrics.csv`: Summary metrics (best/avg/worst/std makespan, runtime, convergence gen)
