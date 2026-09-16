@@ -1,8 +1,8 @@
 """
 Experiment runner for the JSSP genetic algorithm.
 
-Runs each benchmark × 3 parameter sets × N_RUNS times (GA is random),
-then writes metrics.csv, a time table, Gantt charts, and one comparison bar chart.
+One-factor parameter sweep: baseline A, then B/C/D each change one knob.
+6 instances × 4 param sets × N_RUNS → metrics, time table, Gantt, convergence.
 
 Depends on jobshop.py.
 """
@@ -20,24 +20,24 @@ import matplotlib.pyplot as plt
 
 from jobshop import GeneticAlgorithm, load_data
 
-# Run on 4 CPU cores as requested
 NUM_WORKERS = 4
 
-# Assignment: 3 size categories × 2 Lawrence instances each
 INSTANCES = {
     "small":  ["data/la01.txt", "data/la05.txt"],   # 10×5
     "medium": ["data/la17.txt", "data/la20.txt"],   # 10×10
     "large":  ["data/la32.txt", "data/la35.txt"],   # 30×10
 }
 
-# Three GA configurations to compare in the report
+# One-factor-at-a-time configs (gens fixed; mut kept in 0.03–0.10)
+# A = baseline; B = mutation only; C = crossover only; D = population only
 PARAM_SETS = {
-    "A": dict(population_size=100, generations=1250,  crossover_rate=0.8, mutation_rate=0.05),
+    "A": dict(population_size=100, generations=1250, crossover_rate=0.8, mutation_rate=0.05),
     "B": dict(population_size=100, generations=1250, crossover_rate=0.8, mutation_rate=0.10),
-    "C": dict(population_size=100, generations=1250, crossover_rate=0.8, mutation_rate=0.05),
+    "C": dict(population_size=100, generations=1250, crossover_rate=0.6, mutation_rate=0.05),
+    "D": dict(population_size=150, generations=1250, crossover_rate=0.8, mutation_rate=0.05),
 }
 
-N_RUNS = 10  # repeats, assignment asks 10–30
+N_RUNS = 30
 
 
 def convergence_generation(history):
@@ -52,7 +52,7 @@ def convergence_generation(history):
 
 
 def one_run(instance_path, params, seed):
-    """One full GA run → makespan, chromosome, time, convergence gen."""
+    """One full GA run → makespan, chromosome, time, convergence gen, history."""
     if seed is not None:
         random.seed(seed)
     ga = GeneticAlgorithm(load_data(instance_path), **params)
@@ -61,11 +61,13 @@ def one_run(instance_path, params, seed):
     best_entry, history = ga.run(verbose=False)
 
     # best_entry is [chromosome, makespan]
+    # history[i] = best makespan found up to generation i+1
     return {
         "makespan": best_entry[1],
         "chromosome": best_entry[0],
         "time": time.perf_counter() - t0,
         "convergence_gen": convergence_generation(history),
+        "history": history,
     }
 
 
@@ -120,37 +122,51 @@ def plot_gantt(schedule, makespan, title, out_path):
     plt.close(fig)
 
 
+def plot_convergence(histories, title, out_path):
+    """Line chart: best makespan so far vs generation (one line per param set)."""
+    fig, ax = plt.subplots(figsize=(8, 4))
+    for set_name, history in histories.items():
+        ax.plot(range(1, len(history) + 1), history, label=f"Set {set_name}")
+    ax.set_xlabel("Generation")
+    ax.set_ylabel("Best makespan so far")
+    ax.set_title(title)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
 def save_reports(rows, out_dir="results"):
-    """Time pivot (instance × A/B/C) + one bar chart (best makespan & avg time)."""
+    """Time pivot (instance × each param set) + bar chart (best makespan & avg time)."""
     instances = list(dict.fromkeys(r["instance"] for r in rows))
+    set_names = list(PARAM_SETS.keys())
     lookup = {(r["instance"], r["param_set"]): r for r in rows}
 
-    # Assignment time table
-    time_rows = [
-        {
-            "instance": inst,
-            "time_A_s": round(float(lookup[(inst, "A")]["avg_time"]), 4),
-            "time_B_s": round(float(lookup[(inst, "B")]["avg_time"]), 4),
-            "time_C_s": round(float(lookup[(inst, "C")]["avg_time"]), 4),
-        }
-        for inst in instances
-    ]
+    time_rows = []
+    for inst in instances:
+        row = {"instance": inst}
+        for s in set_names:
+            row[f"time_{s}_s"] = round(float(lookup[(inst, s)]["avg_time"]), 4)
+        time_rows.append(row)
+
     with open(f"{out_dir}/time_table.csv", "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=time_rows[0].keys())
         w.writeheader()
         w.writerows(time_rows)
 
-    # Side-by-side bars for report figures
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-    x, width = range(len(instances)), 0.25
+    n_sets = len(set_names)
+    width = 0.8 / n_sets
+    fig, axes = plt.subplots(1, 2, figsize=(14, 4))
+    x = range(len(instances))
     for ax, field, title, fmt in [
         (axes[0], "best", "Best makespan", "%.0f"),
         (axes[1], "avg_time", "Avg time (s)", "%.2f"),
     ]:
-        for i, s in enumerate("ABC"):
+        for i, s in enumerate(set_names):
             vals = [float(lookup[(inst, s)][field]) for inst in instances]
-            bars = ax.bar([xi + (i - 1) * width for xi in x], vals, width, label=f"Set {s}")
-            ax.bar_label(bars, fmt=fmt, fontsize=7, padding=2)
+            offsets = [xi + (i - (n_sets - 1) / 2) * width for xi in x]
+            bars = ax.bar(offsets, vals, width, label=f"Set {s}")
+            ax.bar_label(bars, fmt=fmt, fontsize=6, padding=2)
         ax.set_xticks(list(x), instances)
         ax.set_title(title)
         ax.legend()
@@ -164,6 +180,8 @@ def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt", num_worker
     """Sweep all instances × param sets in parallel; write CSV, Gantts, and reports."""
     Path("results").mkdir(exist_ok=True)
     Path(gantt_dir).mkdir(parents=True, exist_ok=True)
+    conv_dir = Path("results/convergence")
+    conv_dir.mkdir(exist_ok=True)
 
     tasks = []
     for category, paths in INSTANCES.items():
@@ -200,6 +218,7 @@ def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt", num_worker
     for category, paths in INSTANCES.items():
         for path in paths:
             name = Path(path).stem  # e.g. "la01"
+            best_histories = {}  # param set → history from best of N_RUNS
             for set_name, params in PARAM_SETS.items():
                 key = (category, name, set_name)
                 runs = results_by_config[key]
@@ -216,11 +235,18 @@ def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt", num_worker
                     **{f"p_{k}": v for k, v in params.items()},
                 })
 
-                # Gantt for the best of the N_RUNS repeats
+                # Gantt + keep convergence curve from the best repeat
                 best = min(runs, key=lambda r: r["makespan"])
+                best_histories[set_name] = best["history"]
                 schedule, cmax = GeneticAlgorithm(load_data(path)).build_schedule(best["chromosome"])
                 plot_gantt(schedule, cmax, f"{name} / set {set_name}",
                            f"{gantt_dir}/{name}_{set_name}.png")
+
+            plot_convergence(
+                best_histories,
+                f"{name}: best makespan over generations",
+                conv_dir / f"{name}.png",
+            )
 
     with open(out_csv, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=rows[0].keys())
