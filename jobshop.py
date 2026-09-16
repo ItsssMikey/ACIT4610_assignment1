@@ -1,9 +1,10 @@
 import random
 import time
 
-# random.seed(42)
-
 class GeneticAlgorithm:
+    '''
+    Genetic algorithm solver for the Job Shop Scheduling Problem (JSSP).
+    '''
     def __init__(
         self,
         instance,
@@ -12,7 +13,11 @@ class GeneticAlgorithm:
         mutation_rate   = 0.05,
         crossover_rate  = 0.8,
         tournament_size = 2,
+        seed = None,
     ):
+        '''
+        Initializes the genetic algorithm with problem instance and parameters.
+        '''
         self.num_jobs         = instance[0]
         self.num_machines     = instance[1]
         self.jobs             = instance[2]
@@ -21,7 +26,7 @@ class GeneticAlgorithm:
         self.mutation_rate    = mutation_rate
         self.crossover_rate   = crossover_rate
         self.tournament_size  = tournament_size
-
+        self.rng = random.Random(seed)
 
     def create_chromosome(self):
         '''
@@ -35,50 +40,23 @@ class GeneticAlgorithm:
         for job_id in range(self.num_jobs):
             chromosome.extend([job_id] * self.num_machines)
 
-        random.shuffle(chromosome)
+        self.rng.shuffle(chromosome)
 
-        return chromosome
+        return chromosome 
 
 
-    def fitness(self, chromosome):
+    def decode(self, chromosome, return_schedule=False):
         '''
-        Decodes a chromosome and returns the makespan.
-        '''
-        job_counters = [0] * self.num_jobs
-
-        job_ready_times = [0] * self.num_jobs
-        machine_ready_times = [0] * self.num_machines
-
-        for job_id in chromosome:
-            operation_id = job_counters[job_id]
-
-            machine, processing_time = self.jobs[job_id][operation_id]
-
-            start_time = max(
-                job_ready_times[job_id],
-                machine_ready_times[machine]
-            )
-            finish_time = start_time + processing_time
-
-            job_ready_times[job_id] = finish_time
-            machine_ready_times[machine] = finish_time
-            
-            job_counters[job_id] += 1
-
-        makespan = max(machine_ready_times)
-
-        return makespan
-
-
-    def build_schedule(self, chromosome):
-        '''
-        Decodes a chromosome into a schedule and calculates the makespan.
+        Decodes a chromosome using a semi-active schedule builder.
+        Checks when the previous operation is done and when the required machine is ready.
+        The maximum of these two is then the start time where both of these are fulfilled.
         The schedule is represented as a list of dictionaries, where each dictionary contains:
         - job: the job ID
         - operation: the operation ID (0 to NUM_MACHINES-1)
         - machine: the machine ID for this operation
         - start: the start time of the operation
         - finish: the finish time of the operation
+        Returns the makespan, and optionally the schedule.
         '''
         job_counters = [0] * self.num_jobs
 
@@ -98,13 +76,14 @@ class GeneticAlgorithm:
             )
             finish_time = start_time + processing_time
 
-            schedule.append({
-                "job": job_id,
-                "operation": operation_id,
-                "machine": machine,
-                "start": start_time,
-                "finish": finish_time
-            })
+            if return_schedule:
+                schedule.append({
+                    "job": job_id,
+                    "operation": operation_id,
+                    "machine": machine,
+                    "start": start_time,
+                    "finish": finish_time
+                })
 
             job_ready_times[job_id] = finish_time
             machine_ready_times[machine] = finish_time
@@ -113,13 +92,30 @@ class GeneticAlgorithm:
 
         makespan = max(machine_ready_times)
 
-        return schedule, makespan
+        if return_schedule:
+            return schedule, makespan
+
+        return makespan
+
+
+    def fitness(self, chromosome):
+        '''
+        Wrapper for decode(), avoiding cost of building schedule dictionaries.
+        Returns the computed makespan.
+        '''
+        return self.decode(chromosome)
+
+    def build_schedule(self, chromosome):
+        '''
+        Another wrapper for decode().
+        Returns the schedule along with it's computed makespan.
+        '''
+        return self.decode(chromosome, return_schedule=True)
 
 
     def create_population(self):
         '''
-        Create an initial population of chromosomes for the job shop scheduling problem.
-        Each chromosome is a random permutation of job IDs, where each job ID appears as many times as it has operations (equal to the number of machines).
+        Create an initial population of chromosomes.
         '''
         population = [
             self.create_chromosome()
@@ -135,21 +131,26 @@ class GeneticAlgorithm:
 
 
     def tournament_selection(self, population):
-        candidate_list = random.sample(
+        '''
+        Selects the best individual from a random tournament sample.
+        '''
+        candidate_list = self.rng.sample(
             population,
             self.tournament_size
         )
 
-        candidate_list_sorted = sorted(candidate_list, key=lambda item: item[1])
-        return candidate_list_sorted[0]
+        return min(candidate_list, key=lambda item: item[1])
 
 
     def crossover_pox(self, parent1, parent2):
+        '''
+        Applies Precedence Preserving Order-based Crossover (POX).
+        '''
         list_len = len(parent1)
         child1 = [None] * list_len
         child2 = [None] * list_len
 
-        selected = set(random.sample(range(self.num_jobs), self.num_jobs // 2))
+        selected = set(self.rng.sample(range(self.num_jobs), self.num_jobs // 2))
 
         remaining_for_child1 = []
         for job in parent2:
@@ -180,10 +181,13 @@ class GeneticAlgorithm:
         return child1, child2
 
     def mutate(self, chromosome):
+        '''
+        Mutates a chromosome using insert (75%) or swap (25%).
+        '''
         mutant = chromosome.copy()
-        i, j = random.sample(range(len(mutant)), 2)
+        i, j = self.rng.sample(range(len(mutant)), 2)
         
-        if random.random() < 0.75:
+        if self.rng.random() < 0.75:
             gene = mutant.pop(i)
             mutant.insert(j, gene)
         else:
@@ -191,12 +195,16 @@ class GeneticAlgorithm:
             
         return mutant
 
-    def run(self):
+    def run(self, verbose=True):
+        '''
+        Executes the GA and returns (best_solution, history).
+        '''
         population_fitness_list = self.create_population()
 
         best_entry = min(population_fitness_list, key=lambda item: item[1])
 
         best_entry = [best_entry[0].copy(), best_entry[1]]
+        history = []
 
         for generation in range(1, self.generations + 1):
             generation_best = min(population_fitness_list, key=lambda item: item[1])
@@ -204,9 +212,12 @@ class GeneticAlgorithm:
             if generation_best[1] < best_entry[1]:
                 best_entry = [generation_best[0].copy(), generation_best[1]]
 
-            print(
-                f"Generation {generation}: Best Fitness = {best_entry[1]}"
-            )
+            history.append(best_entry[1])
+
+            if verbose:
+                print(
+                    f"Generation {generation}: Best Fitness = {best_entry[1]}"
+                )
 
             new_population = []
             # Elitism
@@ -221,7 +232,7 @@ class GeneticAlgorithm:
 
                 # Crossover
 
-                if random.random() < self.crossover_rate:
+                if self.rng.random() < self.crossover_rate:
                     child_chromosome1, child_chromosome2 = self.crossover_pox(
                         parent_chromosome1,
                         parent_chromosome2
@@ -232,10 +243,10 @@ class GeneticAlgorithm:
 
                 # Mutation
 
-                if random.random() < self.mutation_rate:
+                if self.rng.random() < self.mutation_rate:
                     child_chromosome1 = self.mutate(child_chromosome1)
 
-                if random.random() < self.mutation_rate:
+                if self.rng.random() < self.mutation_rate:
                     child_chromosome2 = self.mutate(child_chromosome2)
 
                 child1 = [child_chromosome1, self.fitness(child_chromosome1)]
@@ -253,12 +264,17 @@ class GeneticAlgorithm:
             key=lambda item: item[1]
         )
         if final_best[1] < best_entry[1]:
-            best_entry = final_best.copy()
+            best_entry = [final_best[0].copy(), final_best[1]]
+            if history:
+                history[-1] = best_entry[1]
 
-        return best_entry
+        return best_entry, history
 
 
 def load_data(filepath):
+    '''
+    Loads and parses a JSSP benchmark file into (num_jobs, num_machines, jobs).
+    '''
     with open(filepath, "r") as file:
         lines = file.readlines()
     
@@ -288,9 +304,9 @@ if __name__ == "__main__":
     instance = load_data("./data/la35.txt")
     jssp_solver = GeneticAlgorithm(instance)
 
-    best_solution = jssp_solver.run()
+    best_solution, history = jssp_solver.run()
 
-    print("Best solution found:", best_solution)
+    print("Best solution found:", best_solution[0])
     schedule, makespan = jssp_solver.build_schedule(best_solution[0])
     
     print("\nSchedule:")
