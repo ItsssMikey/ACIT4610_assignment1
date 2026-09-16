@@ -19,9 +19,11 @@ import matplotlib.pyplot as plt
 
 from jobshop import GeneticAlgorithm, load_data
 
+# -----AI Generated start-----
 # Run on available CPU cores - 1 or 1 if none are detected
 cores = os.cpu_count()
 NUM_WORKERS = cores - 1 if cores is not None else 1
+# -----AI Generated end-----
 
 # 3 size categories x 2 Lawrence instances each
 INSTANCES = {
@@ -98,6 +100,7 @@ def summarize(runs):
     }
 
 
+# -----AI Generated start-----
 def plot_gantt(schedule, makespan, title, out_path):
     """One row per machine; bars = operations (semi-active schedule)."""
     machines = sorted({op["machine"] for op in schedule})
@@ -134,7 +137,7 @@ def plot_convergence(histories, title, out_path):
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
-
+# -----AI Generated end-----
 
 def save_reports(rows, out_dir="results"):
     """Time pivot (instance x each param set) + bar chart (best makespan & avg time)."""
@@ -154,6 +157,7 @@ def save_reports(rows, out_dir="results"):
         w.writeheader()
         w.writerows(time_rows)
 
+    # -----AI Generated start-----
     n_sets = len(set_names)
     width = 0.8 / n_sets
     fig, axes = plt.subplots(1, 2, figsize=(14, 4))
@@ -174,7 +178,7 @@ def save_reports(rows, out_dir="results"):
     fig.savefig(f"{out_dir}/bar_comparison.png", dpi=150)
     plt.close(fig)
     print(f"Wrote {out_dir}/time_table.csv and {out_dir}/bar_comparison.png")
-
+    # -----AI Generated end-----
 
 def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt", num_workers=NUM_WORKERS):
     """Sweep all instances x param sets in parallel; write CSV, Gantts, and reports."""
