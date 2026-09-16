@@ -20,10 +20,9 @@ import matplotlib.pyplot as plt
 
 from jobshop import GeneticAlgorithm, load_data
 
-# -----AI Generated start-----
-# Run on half of the available CPU cores
-NUM_WORKERS = os.cpu_count() // 2 or 1
-# -----AI Generated end-----
+# Run on available CPU cores - 1 or 1 if none are detected
+cores = os.cpu_count()
+NUM_WORKERS = cores - 1 if cores is not None else 1
 
 # 3 size categories x 2 Lawrence instances each
 INSTANCES = {
