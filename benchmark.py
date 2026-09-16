@@ -2,7 +2,7 @@
 Experiment runner for the JSSP genetic algorithm.
 
 One-factor parameter sweep: baseline A, then B/C/D each change one knob.
-6 instances × 4 param sets × N_RUNS → metrics, time table, Gantt, convergence.
+6 instances x 4 param sets x N_RUNS -> metrics, time table, Gantt, convergence.
 
 Depends on jobshop.py.
 """
@@ -20,15 +20,19 @@ import matplotlib.pyplot as plt
 
 from jobshop import GeneticAlgorithm, load_data
 
-NUM_WORKERS = 4
+# -----AI Generated start-----
+# Run on half of the available CPU cores
+NUM_WORKERS = os.cpu_count() // 2 or 1
+# -----AI Generated end-----
 
+# 3 size categories x 2 Lawrence instances each
 INSTANCES = {
-    "small":  ["data/la01.txt", "data/la05.txt"],   # 10×5
-    "medium": ["data/la17.txt", "data/la20.txt"],   # 10×10
-    "large":  ["data/la32.txt", "data/la35.txt"],   # 30×10
+    "small":  ["data/la01.txt", "data/la05.txt"],   # 10x5
+    "medium": ["data/la17.txt", "data/la20.txt"],   # 10x10
+    "large":  ["data/la32.txt", "data/la35.txt"],   # 30x10
 }
 
-# One-factor-at-a-time configs (gens fixed; mut kept in 0.03–0.10)
+# One-factor-at-a-time configs (gens fixed; mut kept in 0.03-0.10)
 # A = baseline; B = mutation only; C = crossover only; D = population only
 PARAM_SETS = {
     "A": dict(population_size=100, generations=1250, crossover_rate=0.8, mutation_rate=0.05),
@@ -70,7 +74,7 @@ def one_run(instance_path, params, seed):
         "history": history,
     }
 
-
+# -----AI Generated start-----
 def _worker_task(args):
     """Worker function executed inside parallel process pool."""
     category, path, set_name, params, run_idx, seed = args
@@ -83,7 +87,7 @@ def _worker_task(args):
         "run_idx": run_idx,
         **run_result,
     }
-
+# -----AI Generated end-----
 
 def summarize(runs):
     """Assignment metrics across the N_RUNS repeats."""
@@ -137,7 +141,7 @@ def plot_convergence(histories, title, out_path):
 
 
 def save_reports(rows, out_dir="results"):
-    """Time pivot (instance × each param set) + bar chart (best makespan & avg time)."""
+    """Time pivot (instance x each param set) + bar chart (best makespan & avg time)."""
     instances = list(dict.fromkeys(r["instance"] for r in rows))
     set_names = list(PARAM_SETS.keys())
     lookup = {(r["instance"], r["param_set"]): r for r in rows}
@@ -177,12 +181,13 @@ def save_reports(rows, out_dir="results"):
 
 
 def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt", num_workers=NUM_WORKERS):
-    """Sweep all instances × param sets in parallel; write CSV, Gantts, and reports."""
+    """Sweep all instances x param sets in parallel; write CSV, Gantts, and reports."""
     Path("results").mkdir(exist_ok=True)
     Path(gantt_dir).mkdir(parents=True, exist_ok=True)
     conv_dir = Path("results/convergence")
     conv_dir.mkdir(exist_ok=True)
 
+    # -----AI Generated start-----
     tasks = []
     for category, paths in INSTANCES.items():
         for path in paths:
@@ -213,6 +218,7 @@ def run_all(out_csv="results/metrics.csv", gantt_dir="results/gantt", num_worker
 
     elapsed_all = time.perf_counter() - t_start
     print(f"All {total_tasks} runs finished in {elapsed_all:.2f}s across {num_workers} cores.")
+    # -----AI Generated end-----
 
     rows = []
     for category, paths in INSTANCES.items():
