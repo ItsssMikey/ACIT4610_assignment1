@@ -1,8 +1,6 @@
 import random
 import time
 
-# random.seed(42)
-
 class GeneticAlgorithm:
     '''
     Genetic algorithm solver for the Job Shop Scheduling Problem (JSSP).
@@ -15,6 +13,7 @@ class GeneticAlgorithm:
         mutation_rate   = 0.05,
         crossover_rate  = 0.8,
         tournament_size = 2,
+        seed = None,
     ):
         '''
         Initializes the genetic algorithm with problem instance and parameters.
@@ -27,7 +26,7 @@ class GeneticAlgorithm:
         self.mutation_rate    = mutation_rate
         self.crossover_rate   = crossover_rate
         self.tournament_size  = tournament_size
-
+        self.rng = random.Random(seed)
 
     def create_chromosome(self):
         '''
@@ -41,7 +40,7 @@ class GeneticAlgorithm:
         for job_id in range(self.num_jobs):
             chromosome.extend([job_id] * self.num_machines)
 
-        random.shuffle(chromosome)
+        self.rng.shuffle(chromosome)
 
         return chromosome 
 
@@ -135,7 +134,7 @@ class GeneticAlgorithm:
         '''
         Selects the best individual from a random tournament sample.
         '''
-        candidate_list = random.sample(
+        candidate_list = self.rng.sample(
             population,
             self.tournament_size
         )
@@ -151,7 +150,7 @@ class GeneticAlgorithm:
         child1 = [None] * list_len
         child2 = [None] * list_len
 
-        selected = set(random.sample(range(self.num_jobs), self.num_jobs // 2))
+        selected = set(self.rng.sample(range(self.num_jobs), self.num_jobs // 2))
 
         remaining_for_child1 = []
         for job in parent2:
@@ -186,9 +185,9 @@ class GeneticAlgorithm:
         Mutates a chromosome using insert (75%) or swap (25%).
         '''
         mutant = chromosome.copy()
-        i, j = random.sample(range(len(mutant)), 2)
+        i, j = self.rng.sample(range(len(mutant)), 2)
         
-        if random.random() < 0.75:
+        if self.rng.random() < 0.75:
             gene = mutant.pop(i)
             mutant.insert(j, gene)
         else:
@@ -233,7 +232,7 @@ class GeneticAlgorithm:
 
                 # Crossover
 
-                if random.random() < self.crossover_rate:
+                if self.rng.random() < self.crossover_rate:
                     child_chromosome1, child_chromosome2 = self.crossover_pox(
                         parent_chromosome1,
                         parent_chromosome2
@@ -244,10 +243,10 @@ class GeneticAlgorithm:
 
                 # Mutation
 
-                if random.random() < self.mutation_rate:
+                if self.rng.random() < self.mutation_rate:
                     child_chromosome1 = self.mutate(child_chromosome1)
 
-                if random.random() < self.mutation_rate:
+                if self.rng.random() < self.mutation_rate:
                     child_chromosome2 = self.mutate(child_chromosome2)
 
                 child1 = [child_chromosome1, self.fitness(child_chromosome1)]
