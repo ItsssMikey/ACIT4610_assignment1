@@ -1,19 +1,21 @@
 # Job Shop Scheduling (JSSP) — Genetic Algorithm
 
 ## Setup
-
+For pip:
 ```bash
-uv sync
+pip install -r requirements.txt
 ```
-*(Alternative using pip: `pip install -r requirements.txt`)*
 
-## Running (Default / Benchmark)
+## Run
 
 Run the full benchmark suite across instances and parameter sets:
 
 ```bash
 uv run benchmark.py
-# or: python benchmark.py
+```
+OR
+```bash
+python benchmark.py
 ```
 
 ### Parameters (`benchmark.py`)
@@ -51,14 +53,16 @@ jssp_solver = GeneticAlgorithm(
     mutation_rate   = 0.05,
     crossover_rate  = 0.8,
     tournament_size = 2,
+    seed = 42
 )
 ```
 
 ---
 
 ## AI Usage Declaration
-
-The following components were developed or assisted using AI:
-- `jobshop.py`: 
-- `benchmark.py`: 
+AI was primarily utilized for documentation purposes.
+Components that developed or assisted using AI are detailed below.
+They are also clearly marked in the code.
+- `benchmark.py`:
+    - Plotting mostly done using AI
     - Multithreading mostly was done using AI 
