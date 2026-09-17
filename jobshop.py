@@ -58,8 +58,10 @@ class GeneticAlgorithm:
         - finish: the finish time of the operation
         Returns the makespan, and optionally the schedule.
         '''
+        # How many operations has been performed for a given job
         job_counters = [0] * self.num_jobs
 
+        # When are jobs and machines ready for next operation
         job_ready_times = [0] * self.num_jobs
         machine_ready_times = [0] * self.num_machines
 
@@ -68,14 +70,18 @@ class GeneticAlgorithm:
         for job_id in chromosome:
             operation_id = job_counters[job_id]
 
+            # Get the required machine and processing time from jobs matrix
             machine, processing_time = self.jobs[job_id][operation_id]
 
+            # Set the start time to the max of when job and machine is ready
+            # giving earliest possible start
             start_time = max(
                 job_ready_times[job_id],
                 machine_ready_times[machine]
             )
             finish_time = start_time + processing_time
 
+            # Optionally append the dictionary to the readable schedule builder
             if return_schedule:
                 schedule.append({
                     "job": job_id,
@@ -85,11 +91,14 @@ class GeneticAlgorithm:
                     "finish": finish_time
                 })
 
+            # Register finish time
             job_ready_times[job_id] = finish_time
             machine_ready_times[machine] = finish_time
 
+            # Increment job_counters at job_id, indicating one operation is done
             job_counters[job_id] += 1
 
+        # Find the makespan by getting the highest ready time
         makespan = max(machine_ready_times)
 
         if return_schedule:
